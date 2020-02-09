@@ -1,0 +1,19 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"bluetooth.h": "c",
+			"printk.h": "c",
+			"addr.h": "c",
+			"gatt.h": "c",
+			"bas.h": "c",
+			"zephyr.h": "c",
+			"kernel.h": "c",
+			"conn.h": "c"
+		}
+	}
+}
