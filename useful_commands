@@ -1,0 +1,18 @@
+#Useful commands for usage in this project
+
+source ~/zephyrproject/zephyr/zephyr-env.sh  # at the beggining set ENV variables to build
+
+
+# build commands always executed from 'build' directory
+west build -b nrf51_pca10028 # from main dir to build project
+
+west build -t pristine  # clean build dir
+
+west build -b nrf51_pca10028 -- -DDTC_OVERLAY_FILE=nrf51_pca10028.overlay #build with overlay
+
+#openocd
+openocd -f interface/stlink-v2-1.cfg -f target/nrf51.cfg #open server
+
+telnet localhost 4444  #connect to server
+ 
+ 

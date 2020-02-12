@@ -22,13 +22,17 @@
 #include <bluetooth/gatt.h>
 #include <bluetooth/services/bas.h>
 
+//dht includes
+#include <device.h>
+#include <drivers/sensor.h>
+
 #define SENSOR_1_NAME				"Temperature Sensor 1"
-#define SENSOR_2_NAME				"Temperature Sensor 2"
+// #define SENSOR_2_NAME				"Temperature Sensor 2"
 #define SENSOR_3_NAME				"Humidity Sensor"
 
 /* Sensor Internal Update Interval [seconds] */
 #define SENSOR_1_UPDATE_IVAL			5
-#define SENSOR_2_UPDATE_IVAL			12
+// #define SENSOR_2_UPDATE_IVAL			12
 #define SENSOR_3_UPDATE_IVAL			60
 
 /* ESS error definitions */
@@ -47,6 +51,10 @@
 #define ESS_EQUAL_TO_REF_VALUE			0x08
 #define ESS_NOT_EQUAL_TO_REF_VALUE		0x09
 
+//declard here since I want to keep function above main()
+static s32_t read_dht(void);
+
+/* Convert to little endian and read GATT attribute */
 static ssize_t read_u16(struct bt_conn *conn, const struct bt_gatt_attr *attr,
 			void *buf, u16_t len, u16_t offset)
 {
@@ -69,7 +77,7 @@ struct es_measurement {
 };
 
 struct temperature_sensor {
-	s16_t temp_value;
+	s32_t temp_value;
 
 	/* Valid Range */
 	s16_t lower_limit;
@@ -104,17 +112,17 @@ static struct temperature_sensor sensor_1 = {
 		.meas.meas_uncertainty = 0x04,
 };
 
-static struct temperature_sensor sensor_2 = {
-		.temp_value = 1800,
-		.lower_limit = -1000,
-		.upper_limit = 5000,
-		.condition = ESS_VALUE_CHANGED,
-		.meas.sampling_func = 0x00,
-		.meas.meas_period = 0x01,
-		.meas.update_interval = SENSOR_2_UPDATE_IVAL,
-		.meas.application = 0x1b,
-		.meas.meas_uncertainty = 0x04,
-};
+// static struct temperature_sensor sensor_2 = {
+// 		.temp_value = 1800,
+// 		.lower_limit = -1000,
+// 		.upper_limit = 5000,
+// 		.condition = ESS_VALUE_CHANGED,
+// 		.meas.sampling_func = 0x00,
+// 		.meas.meas_period = 0x01,
+// 		.meas.update_interval = SENSOR_2_UPDATE_IVAL,
+// 		.meas.application = 0x1b,
+// 		.meas.meas_uncertainty = 0x04,
+// };
 
 static struct humidity_sensor sensor_3 = {
 		.humid_value = 6233,
@@ -249,6 +257,7 @@ static bool check_condition(u8_t condition, s16_t old_val, s16_t new_val,
 	}
 }
 
+/* Write new value to the sensor's struct */
 static void update_temperature(struct bt_conn *conn,
 			       const struct bt_gatt_attr *chrc, s16_t value,
 			       struct temperature_sensor *sensor)
@@ -262,7 +271,7 @@ static void update_temperature(struct bt_conn *conn,
 
 	/* Trigger notification if conditions are met */
 	if (notify) {
-		value = sys_cpu_to_le16(sensor->temp_value);
+		value = sys_cpu_to_le32(sensor->temp_value);
 
 		bt_gatt_notify(conn, chrc, &value, sizeof(value));
 	}
@@ -287,21 +296,21 @@ BT_GATT_SERVICE_DEFINE(ess_svc,
 	BT_GATT_CCC(temp_ccc_cfg_changed,
 		    BT_GATT_PERM_READ | BT_GATT_PERM_WRITE),
 
-	/* Temperature Sensor 2 */
-	BT_GATT_CHARACTERISTIC(BT_UUID_TEMPERATURE,
-			       BT_GATT_CHRC_READ | BT_GATT_CHRC_NOTIFY,
-			       BT_GATT_PERM_READ,
-			       read_u16, NULL, &sensor_2.temp_value),
-	BT_GATT_DESCRIPTOR(BT_UUID_ES_MEASUREMENT, BT_GATT_PERM_READ,
-			   read_es_measurement, NULL, &sensor_2.meas),
-	BT_GATT_CUD(SENSOR_2_NAME, BT_GATT_PERM_READ),
-	BT_GATT_DESCRIPTOR(BT_UUID_VALID_RANGE, BT_GATT_PERM_READ,
-			   read_temp_valid_range, NULL, &sensor_2),
-	BT_GATT_DESCRIPTOR(BT_UUID_ES_TRIGGER_SETTING,
-			   BT_GATT_PERM_READ, read_temp_trigger_setting,
-			   NULL, &sensor_2),
-	BT_GATT_CCC(temp_ccc_cfg_changed,
-		    BT_GATT_PERM_READ | BT_GATT_PERM_WRITE),
+	// /* Temperature Sensor 2 */
+	// BT_GATT_CHARACTERISTIC(BT_UUID_TEMPERATURE,
+	// 		       BT_GATT_CHRC_READ | BT_GATT_CHRC_NOTIFY,
+	// 		       BT_GATT_PERM_READ,
+	// 		       read_u16, NULL, &sensor_2.temp_value),
+	// BT_GATT_DESCRIPTOR(BT_UUID_ES_MEASUREMENT, BT_GATT_PERM_READ,
+	// 		   read_es_measurement, NULL, &sensor_2.meas),
+	// BT_GATT_CUD(SENSOR_2_NAME, BT_GATT_PERM_READ),
+	// BT_GATT_DESCRIPTOR(BT_UUID_VALID_RANGE, BT_GATT_PERM_READ,
+	// 		   read_temp_valid_range, NULL, &sensor_2),
+	// BT_GATT_DESCRIPTOR(BT_UUID_ES_TRIGGER_SETTING,
+	// 		   BT_GATT_PERM_READ, read_temp_trigger_setting,
+	// 		   NULL, &sensor_2),
+	// BT_GATT_CCC(temp_ccc_cfg_changed,
+	// 	    BT_GATT_PERM_READ | BT_GATT_PERM_WRITE),
 
 	/* Humidity Sensor */
 	BT_GATT_CHARACTERISTIC(BT_UUID_HUMIDITY, BT_GATT_CHRC_READ,
@@ -315,18 +324,19 @@ BT_GATT_SERVICE_DEFINE(ess_svc,
 static void ess_simulate(void)
 {
 	static u8_t i;
-	u16_t val;
+	s32_t val;
 
 	if (!(i % SENSOR_1_UPDATE_IVAL)) {
-		val = 1200 + i;
+		val = read_dht();
 		update_temperature(NULL, &ess_svc.attrs[2], val, &sensor_1);
 	}
 
-	if (!(i % SENSOR_2_UPDATE_IVAL)) {
-		val = 1800 + i;
-		update_temperature(NULL, &ess_svc.attrs[9], val, &sensor_2);
-	}
+	// if (!(i % SENSOR_2_UPDATE_IVAL)) {
+	// 	val = 1800 + i;
+	// 	update_temperature(NULL, &ess_svc.attrs[9], val, &sensor_2);
+	// }
 
+	// Uncomment for humidity!
 	if (!(i % SENSOR_3_UPDATE_IVAL)) {
 		sensor_3.humid_value = 6233 + (i % 13);
 	}
@@ -342,6 +352,7 @@ static const struct bt_data ad[] = {
 	BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
 	BT_DATA_BYTES(BT_DATA_GAP_APPEARANCE, 0x00, 0x03),
 	BT_DATA_BYTES(BT_DATA_UUID16_ALL, 0x1a, 0x18),
+	// BT_DATA_BYTES(BT_DATA_UUID16_ALL, 0x1a),
 	/* TODO: Include Service Data AD */
 };
 
@@ -416,9 +427,49 @@ static void bas_notify(void)
 	bt_gatt_bas_set_battery_level(battery_level);
 }
 
+static s32_t read_dht(void)
+{
+		
+	const char *const label = DT_INST_0_AOSONG_DHT_LABEL;
+	struct device *dht22 = device_get_binding(label);
+
+	if (!dht22) {
+		printk("Failed to find sensor %s\n", label);
+		return 0;
+	}
+
+
+	int rc = sensor_sample_fetch(dht22);
+
+	if (rc != 0) {
+		printk("Sensor fetch failed: %d\n", rc);
+	}
+
+	struct sensor_value temperature;
+	struct sensor_value humidity;
+
+	rc = sensor_channel_get(dht22, SENSOR_CHAN_AMBIENT_TEMP,
+				&temperature);
+	// if (rc == 0) {
+	// 	rc = sensor_channel_get(dht22, SENSOR_CHAN_HUMIDITY,
+	// 				&humidity);
+	// }
+	if (rc != 0) {
+		printk("get failed: %d\n", rc);
+		// break;
+	}
+
+	printk("Temperature Reading: %i Cel\n", temperature.val1);
+	// k_sleep(K_SECONDS(2));
+	return temperature.val1;
+	
+}
+
 void main(void)
 {
 	int err;
+	printk("Enter main\n");
+	read_dht();
 
 	err = bt_enable(NULL);
 	if (err) {
@@ -439,7 +490,7 @@ void main(void)
 			ess_simulate();
 		}
 
-		/* Battery level simulation */
-		bas_notify();
+		// /* Battery level simulation */
+		// bas_notify();
 	}
 }
