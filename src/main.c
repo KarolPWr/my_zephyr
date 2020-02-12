@@ -259,7 +259,7 @@ static bool check_condition(u8_t condition, s16_t old_val, s16_t new_val,
 
 /* Write new value to the sensor's struct */
 static void update_temperature(struct bt_conn *conn,
-			       const struct bt_gatt_attr *chrc, s16_t value,
+			       const struct bt_gatt_attr *chrc, s32_t value,
 			       struct temperature_sensor *sensor)
 {
 	bool notify = check_condition(sensor->condition,
@@ -486,9 +486,8 @@ void main(void)
 		k_sleep(MSEC_PER_SEC);
 
 		/* Temperature simulation */
-		if (simulate_temp) {
-			ess_simulate();
-		}
+		s32_t val = read_dht();
+		update_temperature(NULL, &ess_svc.attrs[2], val, &sensor_1);
 
 		// /* Battery level simulation */
 		// bas_notify();
