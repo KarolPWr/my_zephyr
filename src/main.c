@@ -432,6 +432,7 @@ static s32_t read_dht(void)
 		
 	const char *const label = DT_INST_0_AOSONG_DHT_LABEL;
 	struct device *dht22 = device_get_binding(label);
+	s32_t retval = 0;
 
 	if (!dht22) {
 		printk("Failed to find sensor %s\n", label);
@@ -459,9 +460,11 @@ static s32_t read_dht(void)
 		// break;
 	}
 
-	printk("Temperature Reading: %i Cel\n", temperature.val1);
+	retval = temperature.val1*100 + (double)temperature.val2/10000;
+	printk("Temperature Reading: %d Cel\n", retval);
 	// k_sleep(K_SECONDS(2));
-	return temperature.val1;
+	
+	return retval;
 	
 }
 
