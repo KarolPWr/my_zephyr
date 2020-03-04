@@ -27,7 +27,6 @@
 #include <drivers/sensor.h>
 
 #define SENSOR_1_NAME				"Temperature Sensor 1"
-// #define SENSOR_2_NAME				"Temperature Sensor 2"
 #define SENSOR_3_NAME				"Humidity Sensor"
 
 /* Sensor Internal Update Interval [seconds] */
@@ -52,7 +51,7 @@
 #define ESS_NOT_EQUAL_TO_REF_VALUE		0x09
 
 //declard here since I want to keep function above main()
-static s32_t read_dht(void);
+static struct dht22_readings read_dht(void);
 
 /* Convert to little endian and read GATT attribute */
 static ssize_t read_u16(struct bt_conn *conn, const struct bt_gatt_attr *attr,
@@ -97,6 +96,12 @@ struct humidity_sensor {
 	s16_t humid_value;
 
 	struct es_measurement meas;
+};
+
+struct dht22_readings {
+	struct sensor_value temperature;
+	struct sensor_value humidity;
+
 };
 
 static bool simulate_temp;
@@ -293,27 +298,27 @@ BT_GATT_SERVICE_DEFINE(ess_svc,
 			   read_es_measurement, NULL, &sensor_3.meas),
 );
 
-static void ess_simulate(void)
-{
-	static u8_t i;
-	s32_t val;
+// static void ess_simulate(void)
+// {
+// 	static u8_t i;
+// 	s32_t val;
 
-	if (!(i % SENSOR_1_UPDATE_IVAL)) {
-		val = read_dht();
-		update_temperature(NULL, &ess_svc.attrs[2], val, &sensor_1);
-	}
+// 	if (!(i % SENSOR_1_UPDATE_IVAL)) {
+// 		val = read_dht();
+// 		update_temperature(NULL, &ess_svc.attrs[2], val, &sensor_1);
+// 	}
 
-	// Uncomment for humidity!
-	if (!(i % SENSOR_3_UPDATE_IVAL)) {
-		sensor_3.humid_value = 6233 + (i % 13);
-	}
+// 	// Uncomment for humidity!
+// 	if (!(i % SENSOR_3_UPDATE_IVAL)) {
+// 		sensor_3.humid_value = 6233 + (i % 13);
+// 	}
 
-	if (!(i % INT8_MAX)) {
-		i = 0U;
-	}
+// 	if (!(i % INT8_MAX)) {
+// 		i = 0U;
+// 	}
 
-	i++;
-}
+// 	i++;
+// }
 
 static const struct bt_data ad[] = {
 	BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
@@ -381,7 +386,7 @@ static struct bt_conn_auth_cb auth_cb_display = {
 	.cancel = auth_cancel,
 };
 
-static s32_t read_dht(void)
+static struct dht22_readings read_dht(void)
 {
 		
 	const char *const label = DT_INST_0_AOSONG_DHT_LABEL;
@@ -390,7 +395,7 @@ static s32_t read_dht(void)
 
 	if (!dht22) {
 		printk("Failed to find sensor %s\n", label);
-		return 0;
+		// return 0;
 	}
 
 
@@ -400,25 +405,27 @@ static s32_t read_dht(void)
 		printk("Sensor fetch failed: %d\n", rc);
 	}
 
-	struct sensor_value temperature;
-	struct sensor_value humidity;
+	// struct sensor_value temperature;
+	// struct sensor_value humidity;
+
+	struct dht22_readings dht22_readings; 
 
 	rc = sensor_channel_get(dht22, SENSOR_CHAN_AMBIENT_TEMP,
-				&temperature);
-	// if (rc == 0) {
-	// 	rc = sensor_channel_get(dht22, SENSOR_CHAN_HUMIDITY,
-	// 				&humidity);
-	// }
+				&dht22_readings.temperature);
+	if (rc == 0) {
+		rc = sensor_channel_get(dht22, SENSOR_CHAN_HUMIDITY,
+					&dht22_readings.humidity);
+	}
 	if (rc != 0) {
 		printk("get failed: %d\n", rc);
 		// break;
 	}
 
-	retval = temperature.val1*100 + (double)temperature.val2/10000;
-	printk("Temperature Reading: %d Cel\n", retval);
+	// retval = temperature.val1*100 + (double)temperature.val2/10000;
+	// printk("Temperature Reading: %d Cel\n", retval);
 	// k_sleep(K_SECONDS(2));
 	
-	return retval;
+	return dht22_readings;
 	
 }
 
@@ -443,10 +450,19 @@ void main(void)
 		k_sleep(MSEC_PER_SEC);
 
 		/* Temperature simulation */
-		s32_t val = read_dht();
-		update_temperature(NULL, &ess_svc.attrs[2], val, &sensor_1);
+		struct dht22_readings val = read_dht();
 
-		// /* Battery level simulation */
-		// bas_notify();
+		s32_t temp_val;
+		s32_t hum_val;
+		temp_val = val.temperature.val1*100 + (double)val.temperature.val2/10000;
+		hum_val = val.humidity.val1;
+
+
+
+
+		update_temperature(NULL, &ess_svc.attrs[2], temp_val, &sensor_1);
+		sensor_3.humid_value = hum_val*100; //this is one-time write
+		//TODO: enable notify for humidity
+
 	}
 }
