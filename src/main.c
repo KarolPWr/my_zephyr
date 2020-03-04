@@ -112,18 +112,6 @@ static struct temperature_sensor sensor_1 = {
 		.meas.meas_uncertainty = 0x04,
 };
 
-// static struct temperature_sensor sensor_2 = {
-// 		.temp_value = 1800,
-// 		.lower_limit = -1000,
-// 		.upper_limit = 5000,
-// 		.condition = ESS_VALUE_CHANGED,
-// 		.meas.sampling_func = 0x00,
-// 		.meas.meas_period = 0x01,
-// 		.meas.update_interval = SENSOR_2_UPDATE_IVAL,
-// 		.meas.application = 0x1b,
-// 		.meas.meas_uncertainty = 0x04,
-// };
-
 static struct humidity_sensor sensor_3 = {
 		.humid_value = 6233,
 		.meas.sampling_func = 0x02,
@@ -296,22 +284,6 @@ BT_GATT_SERVICE_DEFINE(ess_svc,
 	BT_GATT_CCC(temp_ccc_cfg_changed,
 		    BT_GATT_PERM_READ | BT_GATT_PERM_WRITE),
 
-	// /* Temperature Sensor 2 */
-	// BT_GATT_CHARACTERISTIC(BT_UUID_TEMPERATURE,
-	// 		       BT_GATT_CHRC_READ | BT_GATT_CHRC_NOTIFY,
-	// 		       BT_GATT_PERM_READ,
-	// 		       read_u16, NULL, &sensor_2.temp_value),
-	// BT_GATT_DESCRIPTOR(BT_UUID_ES_MEASUREMENT, BT_GATT_PERM_READ,
-	// 		   read_es_measurement, NULL, &sensor_2.meas),
-	// BT_GATT_CUD(SENSOR_2_NAME, BT_GATT_PERM_READ),
-	// BT_GATT_DESCRIPTOR(BT_UUID_VALID_RANGE, BT_GATT_PERM_READ,
-	// 		   read_temp_valid_range, NULL, &sensor_2),
-	// BT_GATT_DESCRIPTOR(BT_UUID_ES_TRIGGER_SETTING,
-	// 		   BT_GATT_PERM_READ, read_temp_trigger_setting,
-	// 		   NULL, &sensor_2),
-	// BT_GATT_CCC(temp_ccc_cfg_changed,
-	// 	    BT_GATT_PERM_READ | BT_GATT_PERM_WRITE),
-
 	/* Humidity Sensor */
 	BT_GATT_CHARACTERISTIC(BT_UUID_HUMIDITY, BT_GATT_CHRC_READ,
 			       BT_GATT_PERM_READ,
@@ -331,11 +303,6 @@ static void ess_simulate(void)
 		update_temperature(NULL, &ess_svc.attrs[2], val, &sensor_1);
 	}
 
-	// if (!(i % SENSOR_2_UPDATE_IVAL)) {
-	// 	val = 1800 + i;
-	// 	update_temperature(NULL, &ess_svc.attrs[9], val, &sensor_2);
-	// }
-
 	// Uncomment for humidity!
 	if (!(i % SENSOR_3_UPDATE_IVAL)) {
 		sensor_3.humid_value = 6233 + (i % 13);
@@ -350,8 +317,8 @@ static void ess_simulate(void)
 
 static const struct bt_data ad[] = {
 	BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
-	BT_DATA_BYTES(BT_DATA_GAP_APPEARANCE, 0x00, 0x03),
-	BT_DATA_BYTES(BT_DATA_UUID16_ALL, 0x1a, 0x18),
+	BT_DATA_BYTES(BT_DATA_GAP_APPEARANCE, 0x00, 0x03),   // seems not needed
+	BT_DATA_BYTES(BT_DATA_UUID16_ALL, 0x1a, 0x18),  //https://www.bluetooth.com/specifications/gatt/services/
 	// BT_DATA_BYTES(BT_DATA_UUID16_ALL, 0x1a),
 	/* TODO: Include Service Data AD */
 };
@@ -414,19 +381,6 @@ static struct bt_conn_auth_cb auth_cb_display = {
 	.cancel = auth_cancel,
 };
 
-static void bas_notify(void)
-{
-	u8_t battery_level = bt_gatt_bas_get_battery_level();
-
-	battery_level--;
-
-	if (!battery_level) {
-		battery_level = 100U;
-	}
-
-	bt_gatt_bas_set_battery_level(battery_level);
-}
-
 static s32_t read_dht(void)
 {
 		
@@ -480,7 +434,7 @@ void main(void)
 		return;
 	}
 
-	bt_ready();
+	bt_ready();  //BAS registering happens in kconfig!
 
 	bt_conn_cb_register(&conn_callbacks);
 	bt_conn_auth_cb_register(&auth_cb_display);
