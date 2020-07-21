@@ -447,7 +447,7 @@ void main(void)
 	bt_conn_auth_cb_register(&auth_cb_display);
 
 	while (1) {
-		k_sleep(MSEC_PER_SEC);
+		k_sleep(60*MSEC_PER_SEC);
 
 		/* Temperature simulation */
 		struct dht22_readings val = read_dht();
@@ -461,7 +461,7 @@ void main(void)
 
 
 		update_temperature(NULL, &ess_svc.attrs[2], temp_val, &sensor_1);
-		sensor_3.humid_value = hum_val*100; //this is one-time write
+		sensor_3.humid_value = hum_val*100; //this is one-time write, yet it updates
 		//TODO: enable notify for humidity
 
 	}
