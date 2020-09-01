@@ -50,6 +50,9 @@
 #define ESS_EQUAL_TO_REF_VALUE			0x08
 #define ESS_NOT_EQUAL_TO_REF_VALUE		0x09
 
+/* Main sleep interval */
+#define SLEEP_S 60U
+
 //declard here since I want to keep function above main()
 static struct dht22_readings read_dht(void);
 
@@ -447,8 +450,6 @@ void main(void)
 	bt_conn_auth_cb_register(&auth_cb_display);
 
 	while (1) {
-		k_sleep(60*MSEC_PER_SEC);
-
 		/* Temperature simulation */
 		struct dht22_readings val = read_dht();
 
@@ -463,6 +464,8 @@ void main(void)
 		update_temperature(NULL, &ess_svc.attrs[2], temp_val, &sensor_1);
 		sensor_3.humid_value = hum_val*100; //this is one-time write, yet it updates
 		//TODO: enable notify for humidity
+
+		k_sleep(K_SECONDS(SLEEP_S));
 
 	}
 }
