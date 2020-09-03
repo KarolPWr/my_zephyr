@@ -14,5 +14,26 @@ west build -b nrf51_pca10028 -- -DDTC_OVERLAY_FILE=nrf51_pca10028.overlay #build
 openocd -f interface/stlink-v2-1.cfg -f target/nrf51.cfg #open server
 
 telnet localhost 4444  #connect to server
+
+# Basic guide for my setup
+Connect UART cables to FTDI converter 
+Purple is RX. In case of doubt, switch cables
+Navigate to /samples/hello_world
+create overlay with
+
+&uart0 {
+	current-speed = <115200>;
+	status = "okay";
+	tx-pin = <9>;
+	rx-pin = <11>;
+	rts-pin = <8>;
+	cts-pin = <10>;
+};
+
+Execute $ west build -b nrf51_pca10028 -- -DDTC_OVERLAY_FILE=nrf51_pca10028.overlay 
+
+To listen on uart: $ sudo picocom -e b -b 115200 /dev/ttyUSB0
+
+
  
  

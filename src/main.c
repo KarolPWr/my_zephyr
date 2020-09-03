@@ -54,7 +54,7 @@
 #define SLEEP_S 60U
 
 //declard here since I want to keep function above main()
-static struct dht22_readings read_dht(void);
+static struct bme280_readings read_dht(void);
 
 /* Convert to little endian and read GATT attribute */
 static ssize_t read_u16(struct bt_conn *conn, const struct bt_gatt_attr *attr,
@@ -101,7 +101,7 @@ struct humidity_sensor {
 	struct es_measurement meas;
 };
 
-struct dht22_readings {
+struct bme280_readings {
 	struct sensor_value temperature;
 	struct sensor_value humidity;
 
@@ -389,20 +389,35 @@ static struct bt_conn_auth_cb auth_cb_display = {
 	.cancel = auth_cancel,
 };
 
-static struct dht22_readings read_dht(void)
+
+// struct device *dev = device_get_binding("BME280");
+
+// 	if (dev == NULL) {
+// 		printk("Could not get BME280 device\n");
+// 		return;
+// 	}
+
+// 	printk("dev %p name %s\n", dev, dev->config->name);
+
+// 	while (1) {
+// 		struct sensor_value temp, press, humidity;
+
+// 		sensor_sample_fetch(dev);
+// 		sensor_channel_get(dev, SENSOR_CHAN_AMBIENT_TEMP, &temp);
+// 		sensor_channel_get(dev, SENSOR_CHAN_PRESS, &press);
+// 		sensor_channel_get(dev, SENSOR_CHAN_HUMIDITY, &humidity);
+static struct bme280_readings read_dht(void)
 {
-		
-	const char *const label = DT_INST_0_AOSONG_DHT_LABEL;
-	struct device *dht22 = device_get_binding(label);
+	struct device *dev = device_get_binding("BME280");
 	s32_t retval = 0;
 
-	if (!dht22) {
-		printk("Failed to find sensor %s\n", label);
+	if (!dev) {
+		printk("Failed to find sensor\n");
 		// return 0;
 	}
 
 
-	int rc = sensor_sample_fetch(dht22);
+	int rc = sensor_sample_fetch(dev);
 
 	if (rc != 0) {
 		printk("Sensor fetch failed: %d\n", rc);
@@ -411,13 +426,13 @@ static struct dht22_readings read_dht(void)
 	// struct sensor_value temperature;
 	// struct sensor_value humidity;
 
-	struct dht22_readings dht22_readings; 
+	struct bme280_readings bme280_readings; 
 
-	rc = sensor_channel_get(dht22, SENSOR_CHAN_AMBIENT_TEMP,
-				&dht22_readings.temperature);
+	rc = sensor_channel_get(dev, SENSOR_CHAN_AMBIENT_TEMP,
+				&bme280_readings.temperature);
 	if (rc == 0) {
-		rc = sensor_channel_get(dht22, SENSOR_CHAN_HUMIDITY,
-					&dht22_readings.humidity);
+		rc = sensor_channel_get(dev, SENSOR_CHAN_HUMIDITY,
+					&bme280_readings.humidity);
 	}
 	if (rc != 0) {
 		printk("get failed: %d\n", rc);
@@ -428,7 +443,7 @@ static struct dht22_readings read_dht(void)
 	// printk("Temperature Reading: %d Cel\n", retval);
 	// k_sleep(K_SECONDS(2));
 	
-	return dht22_readings;
+	return bme280_readings;
 	
 }
 
@@ -451,7 +466,7 @@ void main(void)
 
 	while (1) {
 		/* Temperature simulation */
-		struct dht22_readings val = read_dht();
+		struct bme280_readings val = read_dht();
 
 		s32_t temp_val;
 		s32_t hum_val;
