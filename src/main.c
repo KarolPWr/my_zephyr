@@ -25,7 +25,7 @@
 
 static bool simulate_temp;
 
-static struct temperature_sensor sensor_1 = {
+static struct temperature_sensor sensor_temp = {
 	.temp_value = 1200,
 	.lower_limit = -10000,
 	.upper_limit = 10000,
@@ -42,6 +42,15 @@ static struct humidity_sensor sensor_3 = {
 	.meas.sampling_func = 0x02,
 	.meas.meas_period = 0x0e10,
 	.meas.update_interval = SENSOR_3_UPDATE_IVAL,
+	.meas.application = 0x1c,
+	.meas.meas_uncertainty = 0x01,
+};
+
+static struct pressure_sensor sensor_pres = {
+	.pressure_value = 10,
+	.meas.sampling_func = 0x00,
+	.meas.meas_period = 0x01,
+	.meas.update_interval = SENSOR_PRES_UPDATE_IVAL,
 	.meas.application = 0x1c,
 	.meas.meas_uncertainty = 0x01,
 };
@@ -203,25 +212,35 @@ BT_GATT_SERVICE_DEFINE(ess_svc,
 					   BT_GATT_CHARACTERISTIC(BT_UUID_TEMPERATURE,
 											  BT_GATT_CHRC_READ | BT_GATT_CHRC_NOTIFY,
 											  BT_GATT_PERM_READ,
-											  read_u16, NULL, &sensor_1.temp_value),
+											  read_u16, NULL, &sensor_temp.temp_value),
 					   BT_GATT_DESCRIPTOR(BT_UUID_ES_MEASUREMENT, BT_GATT_PERM_READ,
-										  read_es_measurement, NULL, &sensor_1.meas),
+										  read_es_measurement, NULL, &sensor_temp.meas),
 					   BT_GATT_CUD(SENSOR_1_NAME, BT_GATT_PERM_READ),
 					   BT_GATT_DESCRIPTOR(BT_UUID_VALID_RANGE, BT_GATT_PERM_READ,
-										  read_temp_valid_range, NULL, &sensor_1),
+										  read_temp_valid_range, NULL, &sensor_temp),
 					   BT_GATT_DESCRIPTOR(BT_UUID_ES_TRIGGER_SETTING,
 										  BT_GATT_PERM_READ, read_temp_trigger_setting,
-										  NULL, &sensor_1),
+										  NULL, &sensor_temp),
 					   BT_GATT_CCC(temp_ccc_cfg_changed,
 								   BT_GATT_PERM_READ | BT_GATT_PERM_WRITE),
 
 					   /* Humidity Sensor */
-					   BT_GATT_CHARACTERISTIC(BT_UUID_HUMIDITY, BT_GATT_CHRC_READ,
+					   BT_GATT_CHARACTERISTIC(BT_UUID_HUMIDITY,
+											  BT_GATT_CHRC_READ | BT_GATT_CHRC_NOTIFY,
 											  BT_GATT_PERM_READ,
 											  read_u16, NULL, &sensor_3.humid_value),
 					   BT_GATT_CUD(SENSOR_3_NAME, BT_GATT_PERM_READ),
 					   BT_GATT_DESCRIPTOR(BT_UUID_ES_MEASUREMENT, BT_GATT_PERM_READ,
-										  read_es_measurement, NULL, &sensor_3.meas), );
+										  read_es_measurement, NULL, &sensor_3.meas),
+
+					   /* Pressure Sensor */
+					   BT_GATT_CHARACTERISTIC(BT_UUID_PRESSURE,
+											  BT_GATT_CHRC_READ | BT_GATT_CHRC_NOTIFY,
+											  BT_GATT_PERM_READ,
+											  read_u16, NULL, &sensor_pres.pressure_value),
+					   BT_GATT_CUD(SENSOR_PRES_NAME, BT_GATT_PERM_READ),
+					   BT_GATT_DESCRIPTOR(BT_UUID_ES_MEASUREMENT, BT_GATT_PERM_READ,
+										  read_es_measurement, NULL, &sensor_pres.meas), );
 
 static const struct bt_data ad[] = {
 	BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
@@ -296,7 +315,7 @@ static struct bt_conn_auth_cb auth_cb_display = {
 static struct bme280_readings read_bme(void)
 {
 	struct device *dev = device_get_binding("BME280");
-	s32_t retval = 0;
+	struct bme280_readings bme280_readings;
 
 	if (!dev)
 	{
@@ -311,12 +330,12 @@ static struct bme280_readings read_bme(void)
 		printk("Sensor fetch failed: %d\n", rc);
 	}
 
-	struct bme280_readings bme280_readings;
-
 	rc = sensor_channel_get(dev, SENSOR_CHAN_AMBIENT_TEMP,
 							&bme280_readings.temperature);
 	if (rc == 0)
 	{
+		rc = sensor_channel_get(dev, SENSOR_CHAN_PRESS,
+								&bme280_readings.pressure);
 		rc = sensor_channel_get(dev, SENSOR_CHAN_HUMIDITY,
 								&bme280_readings.humidity);
 	}
@@ -324,6 +343,7 @@ static struct bme280_readings read_bme(void)
 	{
 		printk("get failed: %d\n", rc);
 	}
+
 	return bme280_readings;
 }
 
@@ -347,17 +367,20 @@ void main(void)
 
 	while (1)
 	{
+
 		/* Temperature simulation */
 		struct bme280_readings val = read_bme();
 
 		s32_t temp_val;
 		s32_t hum_val;
+		u32_t pressure_val;
 		temp_val = val.temperature.val1 * 100 + (double)val.temperature.val2 / 10000;
 		hum_val = val.humidity.val1;
+		pressure_val = (val.pressure.val1 * 10) + (double)val.pressure.val2 / 100000;
 
-		update_temperature(NULL, &ess_svc.attrs[2], temp_val, &sensor_1);
-		sensor_3.humid_value = hum_val * 100; //this is one-time write, yet it updates
-		//TODO: enable notify for humidity
+		update_temperature(NULL, &ess_svc.attrs[2], temp_val, &sensor_temp);
+		sensor_3.humid_value = hum_val * 100;	   //this is one-time write, yet it updates
+		sensor_pres.pressure_value = pressure_val; // for hPa
 
 		k_sleep(K_SECONDS(SLEEP_S));
 	}

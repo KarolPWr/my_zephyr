@@ -22,11 +22,12 @@
 
 #define SENSOR_1_NAME "Temperature Sensor 1"
 #define SENSOR_3_NAME "Humidity Sensor"
+#define SENSOR_PRES_NAME "Pressure Sensor"
 
 /* Sensor Internal Update Interval [seconds] */
 #define SENSOR_1_UPDATE_IVAL 5
-// #define SENSOR_2_UPDATE_IVAL			12
 #define SENSOR_3_UPDATE_IVAL 60
+#define SENSOR_PRES_UPDATE_IVAL 60
 
 /* ESS error definitions */
 #define ESS_ERR_WRITE_REJECT 0x80
@@ -45,7 +46,7 @@
 #define ESS_NOT_EQUAL_TO_REF_VALUE 0x09
 
 /* Main sleep interval */
-#define SLEEP_S 70U
+#define SLEEP_S 840U
 
 /* Environmental Sensing Service Declaration */
 
@@ -84,10 +85,18 @@ struct humidity_sensor
 	struct es_measurement meas;
 };
 
+struct pressure_sensor
+{
+	s16_t pressure_value;
+
+	struct es_measurement meas;
+};
+
 struct bme280_readings
 {
 	struct sensor_value temperature;
 	struct sensor_value humidity;
+	struct sensor_value pressure;
 };
 
 struct es_trigger_setting_seconds
