@@ -52,27 +52,27 @@
 
 struct es_measurement
 {
-	u16_t flags; /* Reserved for Future Use */
-	u8_t sampling_func;
-	u32_t meas_period;
-	u32_t update_interval;
-	u8_t application;
-	u8_t meas_uncertainty;
+	uint16_t flags; /* Reserved for Future Use */
+	uint8_t sampling_func;
+	uint32_t meas_period;
+	uint32_t update_interval;
+	uint8_t application;
+	uint8_t meas_uncertainty;
 };
 
 struct temperature_sensor
 {
-	s32_t temp_value;
+	int32_t temp_value;
 
 	/* Valid Range */
-	s16_t lower_limit;
-	s16_t upper_limit;
+	int16_t lower_limit;
+	int16_t upper_limit;
 
 	/* ES trigger setting - Value Notification condition */
-	u8_t condition;
+	uint8_t condition;
 	union {
-		u32_t seconds;
-		s16_t ref_val; /* Reference temperature */
+		uint32_t seconds;
+		int16_t ref_val; /* Reference temperature */
 	};
 
 	struct es_measurement meas;
@@ -80,14 +80,14 @@ struct temperature_sensor
 
 struct humidity_sensor
 {
-	s16_t humid_value;
+	int16_t humid_value;
 
 	struct es_measurement meas;
 };
 
 struct pressure_sensor
 {
-	s16_t pressure_value;
+	int16_t pressure_value;
 
 	struct es_measurement meas;
 };
@@ -101,14 +101,14 @@ struct bme280_readings
 
 struct es_trigger_setting_seconds
 {
-	u8_t condition;
-	u8_t sec[3];
+	uint8_t condition;
+	uint8_t sec[3];
 } __packed;
 
 struct es_trigger_setting_reference
 {
-	u8_t condition;
-	s16_t ref_val;
+	uint8_t condition;
+	int16_t ref_val;
 } __packed;
 
 #endif /* M_UTILS_H_ */

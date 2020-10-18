@@ -1,0 +1,12 @@
+{
+	"folders": [
+		{
+			"path": "/home/karol/my_zephyr"
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"types.h": "c"
+		}
+	}
+}
